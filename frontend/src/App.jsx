@@ -1,4 +1,4 @@
-
+﻿
 import { Navigate, Route, Routes } from 'react-router-dom'
 import Calc from './pages/Calc.jsx'
 import Nivara from './pages/Nivara.jsx'
@@ -8,8 +8,12 @@ import Report from './features/unmask/Report.jsx'
 import Takedown from './features/unmask/Takedown.jsx'
 import HelpFinder from './features/unmask/HelpFinder.jsx'
 import SafeShareScan from './features/unmask/SafeShareScan.jsx'
+import Notes from './pages/Notes.jsx'
+import RequireUnlock from './features/cover/RequireUnlock.jsx'
+import Vault from './features/cover/Vault.jsx'
+import Alert from './features/cover/Alert.jsx'
 
-export default function App() {
+export default function App() { 
   return (
     <Routes>
       <Route path="/nivara/prove" element={<ProveFake />} />
@@ -18,8 +22,16 @@ export default function App() {
       <Route path="/nivara/help" element={<HelpFinder />} />
       <Route path="/" element={<Navigate to="/calc" replace />} />
       <Route path="/calc" element={<Calc />} />
-      <Route path="/nivara" element={<Nivara />} />
+
+      <Route element={<RequireUnlock />}>
+        <Route path="/nivara" element={<Nivara />} />
+        <Route path="/nivara/vault" element={<Vault />} />
+        <Route path="/nivara/alert" element={<Alert />} />
+      </Route>
+
+      <Route path="/notes" element={<Notes />} />
       <Route path="/verify/:id" element={<Verify />} />
+
       <Route path="*" element={<Navigate to="/calc" replace />} />
       <Route path="/nivara/safeshare-scan" element={<SafeShareScan />} />
     </Routes>
