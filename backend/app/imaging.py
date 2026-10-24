@@ -8,11 +8,11 @@ from app.common import NivaraError, to_data_url
 
 # ---- Tuning knobs (Part 13a tells you if these need changing) ----
 MAX_SIDE = 1024        # work size; bigger images are shrunk first
-DIFF_THRESHOLD = 0.35  # how different a patch must be to count as edited (0-1)
+DIFF_THRESHOLD = 0.45  # how different a patch must be to count as edited (0-1)
 MIN_REGION = 0.002     # ignore edited blobs smaller than 0.2% of the image
 MIN_MATCHES = 15       # alignment needs at least this many matching points
 MIN_VALID = 0.30       # alignment must cover at least 30% of the original
-
+MIN_COLOUR_DIFF = 12   # also require a visible colour change (ignores JPEG noise on flat walls)
 
 @dataclass
 class CompareResult:
@@ -87,7 +87,8 @@ def run_comparison(fake_img: np.ndarray, orig_img: np.ndarray) -> CompareResult:
     dissim[valid == 0] = 0
 
     # Turn the difference map into clean blobs
-    raw = (dissim > DIFF_THRESHOLD).astype(np.uint8) * 255
+    colour_diff = cv2.absdiff(o, a).max(axis=2)
+    raw = ((dissim > DIFF_THRESHOLD) & (colour_diff > MIN_COLOUR_DIFF)).astype(np.uint8) * 255
     kernel = np.ones((5, 5), np.uint8)
     raw = cv2.morphologyEx(raw, cv2.MORPH_OPEN, kernel)
     raw = cv2.dilate(raw, kernel, iterations=2)
