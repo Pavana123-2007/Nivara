@@ -7,6 +7,7 @@ import ProveFake from './features/unmask/ProveFake.jsx'
 import Report from './features/unmask/Report.jsx'
 import Takedown from './features/unmask/Takedown.jsx'
 import HelpFinder from './features/unmask/HelpFinder.jsx'
+import SafeShareScan from './features/unmask/SafeShareScan.jsx'
 
 export default function App() {
   return (
@@ -20,6 +21,7 @@ export default function App() {
       <Route path="/nivara" element={<Nivara />} />
       <Route path="/verify/:id" element={<Verify />} />
       <Route path="*" element={<Navigate to="/calc" replace />} />
+      <Route path="/nivara/safeshare-scan" element={<SafeShareScan />} />
     </Routes>
   )
 }
