@@ -42,7 +42,9 @@ async def mark(
 
 @router.post("/api/safeshare/scan", response_model=ScanResponse)
 async def scan(image: UploadFile = File(...)):
-    await read_image(image)
+    from app.imaging import decode_image
+    from app.watermark_read import read_recipient
 
-    # ---- MOCK: real watermark reading in Part 11 ----
-    return ScanResponse(found=False)
+    data = await read_image(image)
+    recipient_id, confidence = read_recipient(decode_image(data))
+    return ScanResponse(found=recipient_id is not None, recipient_id=recipient_id, confidence=confidence)

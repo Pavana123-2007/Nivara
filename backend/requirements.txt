@@ -3,3 +3,8 @@ uvicorn[standard]
 python-multipart
 python-dotenv
 httpx
+
+opencv-python-headless
+scikit-image
+numpy
+PyWavelets

@@ -1,0 +1,143 @@
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { compareImages } from '../../api.js'
+import BlurReveal from './BlurReveal.jsx'
+import SpreadFinder from './SpreadFinder.jsx'
+import { setLastResult } from './lastResult.js'
+
+function usePreview(file) {
+  const [url, setUrl] = useState(null)
+  useEffect(() => {
+    if (!file) {
+      setUrl(null)
+      return
+    }
+    const u = URL.createObjectURL(file)
+    setUrl(u)
+    return () => URL.revokeObjectURL(u)
+  }, [file])
+  return url
+}
+
+function Picker({ label, hint, file, onPick, preview }) {
+  return (
+    <div className="rounded-card bg-white p-4 shadow-sm">
+      <p className="font-medium text-nivara-900">{label}</p>
+      <p className="mb-3 text-sm text-nivara-700">{hint}</p>
+      {preview && <BlurReveal src={preview} alt={label} />}
+      <label className="mt-3 block cursor-pointer rounded-card border-2 border-dashed border-nivara-500 p-3 text-center text-sm text-nivara-700">
+        {file ? 'Choose a different image' : 'Choose image'}
+        <input
+          type="file"
+          accept="image/jpeg,image/png,image/webp"
+          className="sr-only"
+          onChange={(e) => onPick(e.target.files?.[0] ?? null)}
+        />
+      </label>
+    </div>
+  )
+}
+
+export default function ProveFake() {
+  const navigate = useNavigate()
+  const [fake, setFake] = useState(null)
+  const [original, setOriginal] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+  const [result, setResult] = useState(null)
+  const [copied, setCopied] = useState(false)
+  const fakeUrl = usePreview(fake)
+  const originalUrl = usePreview(original)
+
+  const verifyUrl = result?.verify_id ? `${window.location.origin}/verify/${result.verify_id}` : null
+
+  async function check() {
+    setLoading(true)
+    setError(null)
+    setResult(null)
+    try {
+      const r = await compareImages(fake, original)
+      setResult(r)
+      setLastResult({
+        ...r,
+        verifyUrl: r.verify_id ? `${window.location.origin}/verify/${r.verify_id}` : null,
+      })
+    } catch (e) {
+      setError(e.message || 'Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function copyLink() {
+    await navigator.clipboard.writeText(verifyUrl)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 2000)
+  }
+
+  return (
+    <main className="min-h-screen bg-nivara-50 p-4 font-sans">
+      <button onClick={() => navigate('/nivara')} className="text-sm text-nivara-700">
+        ← Back
+      </button>
+      <h1 className="mt-2 text-2xl font-semibold text-nivara-900">Prove it's fake</h1>
+      <p className="mt-1 text-sm text-nivara-700">
+        This is a crime against you, not your fault. Nivara compares the fake with your original and shows exactly
+        what was changed.
+      </p>
+
+      <div className="mt-4 grid gap-3">
+        <Picker label="The fake image" hint="The one being shared or used to threaten you" file={fake} onPick={setFake} preview={fakeUrl} />
+        <Picker label="Your original photo" hint="The real photo it was made from" file={original} onPick={setOriginal} preview={originalUrl} />
+      </div>
+
+      <button
+        onClick={check}
+        disabled={!fake || !original || loading}
+        className="mt-4 w-full rounded-card bg-nivara-600 p-4 font-medium text-white disabled:opacity-40"
+      >
+        {loading ? 'Checking... (about 5 seconds)' : 'Check the image'}
+      </button>
+
+      {error && <p role="alert" className="mt-3 text-sm text-danger">{error}</p>}
+
+      {result && result.verdict === 'manipulated' && (
+        <section className="mt-4 rounded-card border-2 border-danger bg-white p-4" aria-live="polite">
+          <h2 className="text-xl font-semibold text-danger">FAKE – {result.similarity}% identical, edited here</h2>
+          <p className="mt-1 mb-3 text-sm text-gray-700">
+            The coloured boxes show what was changed, drawn on your original photo.
+          </p>
+          <BlurReveal src={result.heatmap_png} alt="heatmap of edited areas" />
+          {!result.aligned && (
+            <p className="mt-2 text-xs text-gray-500">The images could not be lined up exactly, so this result is less certain.</p>
+          )}
+          <div className="mt-4 grid gap-2">
+            <button onClick={copyLink} className="rounded-card bg-nivara-600 p-3 text-white">
+              {copied ? 'Link copied' : 'Copy "Verified Manipulated" link'}
+            </button>
+            <button onClick={() => navigate('/nivara/report')} className="rounded-card bg-nivara-100 p-3 text-nivara-900">
+              Make evidence report
+            </button>
+            <button onClick={() => navigate('/nivara/takedown')} className="rounded-card bg-nivara-100 p-3 text-nivara-900">
+              Write takedown complaint
+            </button>
+          </div>
+          <SpreadFinder />
+        </section>
+      )}
+
+      {result && result.verdict === 'no_major_edits' && (
+        <section className="mt-4 rounded-card bg-white p-4" aria-live="polite">
+          <h2 className="text-lg font-semibold text-nivara-900">No major edits found</h2>
+          <p className="mt-1 text-sm text-gray-700">
+            This doesn't prove the image is real. It may have been made from a different photo. You can still get help
+            and report it.
+          </p>
+          <button onClick={() => navigate('/nivara/help')} className="mt-3 w-full rounded-card bg-nivara-100 p-3 text-nivara-900">
+            Get help
+          </button>
+        </section>
+      )}
+    </main>
+  )
+}
