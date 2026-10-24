@@ -1,0 +1,34 @@
+Caught 23 of 24 edited fakes; 0 false alarms in 6 untouched originals.
+
+| Sample | Image | Test | Result | Similarity % |
+| --- | --- | --- | --- | --- |
+| camel | Edited fake | As is | Yes | 99.2 |
+| camel | Edited fake | JPEG quality 90 | Yes | 99.4 |
+| camel | Edited fake | JPEG quality 70 | Yes | 99.4 |
+| camel | Edited fake | JPEG quality 50 | Yes | 99.2 |
+| camel | Edited fake | Resized to 50% | Yes | 99.2 |
+| camel | Edited fake | Cropped 10% | Yes | 99.0 |
+| camel | Edited fake | WhatsApp-like (1600 px, q60) | Yes | 99.2 |
+| camel | Edited fake | Screenshot-like (80%, q80) | Yes | 99.2 |
+| camel | Untouched original | JPEG quality 70 | Correct (no edits) | 100.0 |
+| camel | Untouched original | WhatsApp-like (1600 px, q60) | Correct (no edits) | 100.0 |
+| flower | Edited fake | As is | Yes | 94.1 |
+| flower | Edited fake | JPEG quality 90 | Yes | 94.1 |
+| flower | Edited fake | JPEG quality 70 | Yes | 93.9 |
+| flower | Edited fake | JPEG quality 50 | Yes | 94.1 |
+| flower | Edited fake | Resized to 50% | Yes | 94.3 |
+| flower | Edited fake | Cropped 10% | Yes | 92.6 |
+| flower | Edited fake | WhatsApp-like (1600 px, q60) | Yes | 93.7 |
+| flower | Edited fake | Screenshot-like (80%, q80) | Yes | 94.0 |
+| flower | Untouched original | JPEG quality 70 | Correct (no edits) | 100.0 |
+| flower | Untouched original | WhatsApp-like (1600 px, q60) | Correct (no edits) | 100.0 |
+| room | Edited fake | As is | MISSED | 100.0 |
+| room | Edited fake | JPEG quality 90 | Yes | 95.2 |
+| room | Edited fake | JPEG quality 70 | Yes | 99.7 |
+| room | Edited fake | JPEG quality 50 | Yes | 99.7 |
+| room | Edited fake | Resized to 50% | Yes | 92.4 |
+| room | Edited fake | Cropped 10% | Yes | 99.6 |
+| room | Edited fake | WhatsApp-like (1600 px, q60) | Yes | 95.9 |
+| room | Edited fake | Screenshot-like (80%, q80) | Yes | 99.3 |
+| room | Untouched original | JPEG quality 70 | Correct (no edits) | 100.0 |
+| room | Untouched original | WhatsApp-like (1600 px, q60) | Correct (no edits) | 100.0 |
