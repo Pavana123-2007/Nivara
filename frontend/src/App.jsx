@@ -6,8 +6,9 @@ import Verify from './pages/Verify.jsx'
 import Notes from './pages/Notes.jsx'
 import RequireUnlock from './features/cover/RequireUnlock.jsx'
 import Vault from './features/cover/Vault.jsx'
+import Alert from './features/cover/Alert.jsx'
 
-export default function App() {
+export default function App() { 
   return (
     <Routes>
       <Route path="/" element={<Navigate to="/calc" replace />} />
@@ -16,6 +17,7 @@ export default function App() {
       <Route element={<RequireUnlock />}>
         <Route path="/nivara" element={<Nivara />} />
         <Route path="/nivara/vault" element={<Vault />} />
+        <Route path="/nivara/alert" element={<Alert />} />
       </Route>
 
       <Route path="/notes" element={<Notes />} />
