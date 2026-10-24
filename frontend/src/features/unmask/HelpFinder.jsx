@@ -1,0 +1,1 @@
+export default function HelpFinder() { return <p>Coming soon</p> }

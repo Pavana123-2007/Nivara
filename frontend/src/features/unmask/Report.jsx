@@ -1,0 +1,1 @@
+export default function Report() { return <p>Coming soon</p> }

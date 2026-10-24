@@ -1,0 +1,1 @@
+export default function Takedown() { return <p>Coming soon</p> }

@@ -1,0 +1,1 @@
+export default function SpreadFinder() { return null }
