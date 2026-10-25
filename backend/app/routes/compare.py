@@ -1,6 +1,7 @@
 from fastapi import APIRouter, File, UploadFile
 from starlette.concurrency import run_in_threadpool
 
+from app.clues import analyze_clues
 from app.common import now_utc, read_image, sha256_hex
 from app.imaging import blurred_thumb, decode_image, run_comparison
 from app.schemas import CompareResponse, Region
@@ -43,3 +44,11 @@ async def compare(fake: UploadFile = File(...), original: UploadFile = File(...)
         verify_id=verify_id,
         checked_at=checked_at,
     )
+
+
+# Member 2 - Clues lite: single-image clues when no original is found. Nothing is stored.
+@router.post("/api/clues")
+async def clues(fake: UploadFile = File(...)):
+    data = await read_image(fake)
+    decode_image(data)  # same image checks and error messages as /api/compare
+    return await run_in_threadpool(analyze_clues, data)
