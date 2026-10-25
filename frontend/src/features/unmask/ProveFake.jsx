@@ -27,21 +27,24 @@ function Picker({ label, hint, file, onPick, preview }) {
   return (
     <div className="flex flex-col rounded-card bg-white p-4 shadow-sm">
       <p className="font-medium text-nivara-900">{label}</p>
-      <p className="mb-3 text-sm text-nivara-700">{hint}</p>
+      <p className="mb-3 min-h-10 text-sm text-nivara-700">{hint}</p>
       {preview && (
         <div className="overflow-hidden rounded-card [&_img]:h-48 [&_img]:w-full [&_img]:object-cover">
           <BlurReveal src={preview} alt={label} />
         </div>
       )}
-      <label className="mt-3 block cursor-pointer rounded-card border-2 border-dashed border-nivara-500 p-3 text-center text-sm text-nivara-700">
-        {file ? 'Choose a different image' : 'Choose image'}
-        <input
-          type="file"
-          accept="image/jpeg,image/png,image/webp"
-          className="sr-only"
-          onChange={(e) => onPick(e.target.files?.[0] ?? null)}
-        />
-      </label>
+      {/* mt-auto pushes the button to the bottom so both cards line up */}
+      <div className="mt-auto pt-3">
+        <label className="block cursor-pointer rounded-card border-2 border-dashed border-nivara-500 p-3 text-center text-sm text-nivara-700">
+          {file ? 'Choose a different image' : 'Choose image'}
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="sr-only"
+            onChange={(e) => onPick(e.target.files?.[0] ?? null)}
+          />
+        </label>
+      </div>
     </div>
   )
 }
@@ -50,7 +53,8 @@ export default function ProveFake() {
   const navigate = useNavigate()
   const [fake, setFake] = useState(null)
   const [original, setOriginal] = useState(null)
-  const [loading, setLoading] = useState(false)
+  const [busy, setBusy] = useState(null) // 'check' | 'search' | null
+  const loading = busy !== null
   const [error, setError] = useState(null)
   const [result, setResult] = useState(null)
   const [copied, setCopied] = useState(false)
@@ -62,7 +66,7 @@ export default function ProveFake() {
   const verifyUrl = result?.verify_id ? `${window.location.origin}/verify/${result.verify_id}` : null
 
   async function check() {
-    setLoading(true)
+    setBusy('check')
     setError(null)
     setResult(null)
     setClues(null)
@@ -76,12 +80,12 @@ export default function ProveFake() {
     } catch (e) {
       setError(e.message || 'Something went wrong. Please try again.')
     } finally {
-      setLoading(false)
+      setBusy(null)
     }
   }
 
   async function findAndCheck() {
-    setLoading(true)
+    setBusy('search')
     setError(null)
     setResult(null)
     setSearch(null)
@@ -106,7 +110,7 @@ export default function ProveFake() {
     } catch (e) {
       setError(e.message || 'Something went wrong. Please try again.')
     } finally {
-      setLoading(false)
+      setBusy(null)
     }
   }
 
@@ -141,7 +145,7 @@ export default function ProveFake() {
               disabled={!fake || !original || loading}
               className="mt-4 w-full rounded-card bg-nivara-600 p-4 font-medium text-white disabled:opacity-40"
             >
-              {loading ? 'Checking... (about 5 seconds)' : 'Check the image'}
+              {busy === 'check' ? 'Checking... (about 5 seconds)' : 'Check the image'}
             </button>
 
             <button
@@ -149,7 +153,7 @@ export default function ProveFake() {
               disabled={!fake || loading}
               className="mt-2 w-full rounded-card border-2 border-nivara-600 bg-white p-4 font-medium text-nivara-700 disabled:opacity-40"
             >
-              {loading ? 'Searching your vault...' : 'I only have the fake – find the original in my vault'}
+              {busy === 'search' ? 'Searching your vault...' : 'I only have the fake – find the original in my vault'}
             </button>
 
             {search?.found && (

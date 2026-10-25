@@ -25,9 +25,23 @@ async function toJpeg(dataUrl, maxW = 700) {
   return { url: canvas.toDataURL('image/jpeg', 0.85), w: canvas.width, h: canvas.height }
 }
 
+// Work out an image's size on the page before drawing it
+async function prepImage(dataUrl, maxH = 80) {
+  const j = await toJpeg(dataUrl)
+  let w = CONTENT_W * 0.6
+  let h = (w * j.h) / j.w
+  if (h > maxH) {
+    h = maxH
+    w = (h * j.w) / j.h
+  }
+  return { ...j, pw: w, ph: h }
+}
+
 const fmt = (iso) => new Date(iso).toLocaleString('en-IN')
 
-export async function buildEvidenceReport({ name, summary, items, proof, includePhotos }) {
+// items: only the vault items she chose to include
+// omitted: how many vault items were left out (so the report shows nothing was hidden)
+export async function buildEvidenceReport({ name, summary, items, omitted = 0, proof }) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   let y = MARGIN
 
@@ -58,18 +72,13 @@ export async function buildEvidenceReport({ name, summary, items, proof, include
     }
     y += 2
   }
-  const image = async (dataUrl, maxH = 80) => {
-    const j = await toJpeg(dataUrl)
-    let w = CONTENT_W * 0.6
-    let h = (w * j.h) / j.w
-    if (h > maxH) {
-      h = maxH
-      w = (h * j.w) / j.h
-    }
-    ensure(h + 4)
-    doc.addImage(j.url, 'JPEG', MARGIN, y, w, h)
-    y += h + 4
+  const drawImage = (p) => {
+    ensure(p.ph + 4)
+    doc.addImage(p.url, 'JPEG', MARGIN, y, p.pw, p.ph)
+    y += p.ph + 4
   }
+
+  const originalSha = proof?.verdict === 'manipulated' ? proof.original_sha256 : null
 
   // ---- Cover page ----
   doc.setFont('helvetica', 'bold')
@@ -82,18 +91,31 @@ export async function buildEvidenceReport({ name, summary, items, proof, include
   if (name) para(`Prepared by: ${name}`)
   heading('Summary')
   para(summary || 'No summary written.')
-  para(`This report contains ${items.length} saved evidence item(s)${proof ? ' and one image manipulation check' : ''}.`)
+  para(
+    `This report contains ${items.length} selected evidence item(s)` +
+      `${proof?.verdict === 'manipulated' ? ' and one image manipulation check' : ''}.`,
+  )
+  if (omitted > 0) {
+    para(`${omitted} other item(s) in the vault were not included in this report.`, 9)
+  }
 
   // ---- 1. Saved evidence ----
-  newPage()
-  heading('1. Saved evidence')
-  para('Each item was saved in an encrypted vault on the phone with the time it was saved and a SHA-256 fingerprint.', 9)
-  for (const [i, item] of items.entries()) {
-    heading(`Item ${i + 1}: ${item.type}, saved ${fmt(item.created_at)}`, 11)
-    if (item.text) para(item.text)
-    if (item.dataUrl && includePhotos) await image(item.dataUrl)
-    para(`SHA-256: ${item.sha256}`, 8, 'courier')
-    y += 2
+  if (items.length > 0) {
+    newPage()
+    heading('1. Saved evidence')
+    para('Each item was saved in an encrypted vault on the phone with the time it was saved and a SHA-256 fingerprint.', 9)
+    for (const [i, item] of items.entries()) {
+      const isOriginal = originalSha && item.sha256 === originalSha
+      const title = `Item ${i + 1}: ${item.type}, saved ${fmt(item.created_at)}${isOriginal ? ' (original photo used in the check)' : ''}`
+      const pic = item.dataUrl ? await prepImage(item.dataUrl) : null
+      // keep the heading, picture and fingerprint together on one page
+      ensure(8 + (pic ? pic.ph + 4 : 0) + 8)
+      heading(title, 11)
+      if (item.text) para(item.text)
+      if (pic) drawImage(pic)
+      para(`SHA-256: ${item.sha256}`, 8, 'courier')
+      y += 2
+    }
   }
 
   // ---- 2. Proof of manipulation ----
@@ -103,9 +125,12 @@ export async function buildEvidenceReport({ name, summary, items, proof, include
     para(`Result: the image is manipulated. It is ${proof.similarity}% identical to the original photo; the rest was edited.`)
     para(`Checked: ${fmt(proof.checked_at)}`)
     para('The highlighted areas below show what was changed, drawn on the original photo.', 9)
-    await image(proof.heatmap_png, 100)
+    drawImage(await prepImage(proof.heatmap_png, 100))
     para(`SHA-256 of the fake image: ${proof.fake_sha256}`, 8, 'courier')
     para(`SHA-256 of the original: ${proof.original_sha256}`, 8, 'courier')
+    if (items.some((it) => it.sha256 === proof.original_sha256)) {
+      para('The original matches a photo saved earlier in the encrypted vault (same fingerprint).', 9)
+    }
     if (proof.verifyUrl) para(`Public verification page: ${proof.verifyUrl}`)
   }
 
