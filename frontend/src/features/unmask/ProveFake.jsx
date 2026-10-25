@@ -4,6 +4,8 @@ import { compareImages } from '../../api.js'
 import BlurReveal from './BlurReveal.jsx'
 import SpreadFinder from './SpreadFinder.jsx'
 import { setLastResult } from './lastResult.js'
+import { findSource, itemToFile } from './findSource.js'
+import { loadVaultItems } from './vaultBridge.js'
 
 function usePreview(file) {
   const [url, setUrl] = useState(null)
@@ -46,6 +48,7 @@ export default function ProveFake() {
   const [error, setError] = useState(null)
   const [result, setResult] = useState(null)
   const [copied, setCopied] = useState(false)
+  const [search, setSearch] = useState(null)
   const fakeUrl = usePreview(fake)
   const originalUrl = usePreview(original)
 
@@ -57,6 +60,34 @@ export default function ProveFake() {
     setResult(null)
     try {
       const r = await compareImages(fake, original)
+      setResult(r)
+      setLastResult({
+        ...r,
+        verifyUrl: r.verify_id ? `${window.location.origin}/verify/${r.verify_id}` : null,
+      })
+    } catch (e) {
+      setError(e.message || 'Something went wrong. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function findAndCheck() {
+    setLoading(true)
+    setError(null)
+    setResult(null)
+    setSearch(null)
+    try {
+      const { items, demo } = await loadVaultItems()
+      const { match, best, checked } = await findSource(fake, demo ? [] : items)
+      if (!match) {
+        setSearch({ found: false, checked, bestScore: best ? best.score : null })
+        return
+      }
+      const originalFile = await itemToFile(match.item)
+      setOriginal(originalFile)
+      setSearch({ found: true, checked, score: match.score, savedAt: match.item.created_at })
+      const r = await compareImages(fake, originalFile)
       setResult(r)
       setLastResult({
         ...r,
@@ -98,6 +129,30 @@ export default function ProveFake() {
       >
         {loading ? 'Checking... (about 5 seconds)' : 'Check the image'}
       </button>
+
+      <button
+        onClick={findAndCheck}
+        disabled={!fake || loading}
+        className="mt-2 w-full rounded-card border-2 border-nivara-600 bg-white p-4 font-medium text-nivara-700 disabled:opacity-40"
+      >
+        {loading ? 'Searching your vault...' : 'I only have the fake – find the original in my vault'}
+      </button>
+
+      {search?.found && (
+        <p className="mt-3 rounded-card bg-nivara-100 p-3 text-sm text-nivara-900">
+          Found in your vault: this fake was made from your photo saved on{' '}
+          {new Date(search.savedAt).toLocaleDateString()} ({Math.round(search.score * 100)}% match). It is now shown
+          as "Your original photo" above.
+        </p>
+      )}
+
+      {search && !search.found && (
+        <p className="mt-3 rounded-card bg-white p-3 text-sm text-nivara-900">
+          No matching photo in your vault (checked {search.checked} photo{search.checked === 1 ? '' : 's'}
+            {search.bestScore != null ? `, closest ${Math.max(0, Math.round(search.bestScore * 100))}%` : ''}).
+        </p>
+      )}
+
 
       {error && <p role="alert" className="mt-3 text-sm text-danger">{error}</p>}
 
