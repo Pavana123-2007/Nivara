@@ -8,6 +8,9 @@ Team **HackHers**, recHERsion'26, Problem Statement 2: Women's Safety
 Pavana G · Pavani Kanipakam
 
 - **Live demo:** https://calc-app-hh.vercel.app (open it, do a sum, then type `1947 =`)
+- **Demo video:** https://drive.google.com/file/d/1faMV5ijD0-rvOy_PY545Sm0zYqJTXASi/view?usp=sharing
+  Please **download the video and then watch it**. Google Drive's online preview can be low quality or still processing for large videos.
+- **Alert bot:** https://t.me/parcel_updates_hh24_bot (tap **Start** before testing alerts; steps below)
 - **Backend API:** hosted on Render (free plan; the first request after a quiet period can take about a minute while it wakes up)
 
 ---
@@ -156,7 +159,20 @@ Open http://localhost:5173
 3. **Prove it's fake:** choose `camel_fake.jpg` and tap **"I only have the fake – find the original in my vault"**. You'll get a FAKE result with the edit highlighted.
 4. Try `room_fake.jpg` (original not in the vault): the Clues card shows its AI label ("Made with ChatGPT").
 5. **Evidence report** and **Takedown complaint** buttons appear under the result.
-6. **Send alert:** set a trusted contact (they must first open your bot in Telegram and tap **Start**; their numeric chat ID can be found with @userinfobot).
+6. **Send alert:** see *Try the Telegram alert yourself* below.
+7. **Hide:** tap **Hide** (or shake the phone) and Nivara turns back into the calculator. The decoy code `2580 =` opens harmless notes instead.
+8. **Safe Share:** choose a photo, type two names, **Make marked copies**, and download one copy. Then open **Who leaked this photo?** on the same device and choose that copy: Nivara shows whose copy it was.
+
+### Try the Telegram alert yourself (judges)
+You can receive a real Nivara alert on your own phone in about 1 minute:
+
+1. **Start our bot:** open https://t.me/parcel_updates_hh24_bot in Telegram and tap **Start**.
+   (Telegram only lets a bot message people who have started it first, so this step is required.)
+2. **Get your chat ID:** in Telegram, open **@userinfobot** and tap **Start**. It replies with `Id: 123456789`; that number is your chat ID.
+3. **Add yourself as the trusted contact:** on the live site, type `1947 =` → **Send alert** → enter any name and your chat ID (numbers only, not your @username) → **Save trusted contact**.
+4. **Send the alert:** tap **"Can you pick up the parcel?"** (optionally tick *Also share my location*). Within a few seconds the bot sends you the real alert.
+
+If it says the alert could not be delivered: make sure you tapped **Start** on the bot above, used the **numeric** chat ID, and haven't blocked the bot.
 
 ### 5. Accuracy test
 ```bash
@@ -180,7 +196,8 @@ python tests/robustness.py
 ---
 
 ## Honest limitations
-- **Proof needs her original photo.** Without it, Nivara gives clues (AI labels, metadata), never a verdict. WhatsApp, Instagram and screenshots strip AI labels, so "no label" never means "real".
+- **Proof needs her original photo**, either uploaded or already saved in her Nivara vault, where Nivara finds it automatically from the fake alone. If no original exists anywhere, Nivara gives clues (AI labels, metadata), never a verdict. WhatsApp, Instagram and screenshots strip AI labels, so "no label" never means "real".
+- Telegram bots can only message people who have tapped **Start** on the bot first, so the trusted contact must start the bot once.
 - The vault lives on her phone: clearing browser data or losing the phone loses it (encrypted backup is future work).
 - Safe Share marks may not survive heavy compression or editing.
 - Render's free plan sleeps when idle; the first request can take about a minute.
