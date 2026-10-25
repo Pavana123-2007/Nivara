@@ -10,7 +10,7 @@ MIN_SIDE = 256  # dwtDct needs at least 256x256
 def _decode_once(img: np.ndarray) -> str | None:
     from app.imwatermark_safe import WatermarkDecoder  # imported here so the app runs without it
 
-    raw = WatermarkDecoder("bytes", 32).decode(img, "dwtDct")
+    raw = WatermarkDecoder("bytes", 32).decode(img, "dwtDctSvd")
     try:
         text = bytes(raw).decode("ascii")
     except (UnicodeDecodeError, TypeError, ValueError):

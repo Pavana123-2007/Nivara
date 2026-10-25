@@ -50,6 +50,14 @@ const tools = [
     color: '#FFF0C9',
   },
   {
+    icon: '📨',
+    title: 'Safe Share',
+    description: 'Send a photo with an invisible mark for each person, so a leak can be traced.',
+    to: '/nivara/safeshare',
+    tag: 'SHARE SAFELY',
+    color: '#E6ECFF',
+  },
+  {
     icon: '🔎',
     key: 'tool.scan',
     title: 'Check a leaked copy',
