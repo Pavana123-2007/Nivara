@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom'
 import { compareImages } from '../../api.js'
 import BlurReveal from './BlurReveal.jsx'
 import SpreadFinder from './SpreadFinder.jsx'
+import CluesCard from './CluesCard.jsx'
 import { setLastResult } from './lastResult.js'
 import { findSource, itemToFile } from './findSource.js'
 import { loadVaultItems } from './vaultBridge.js'
+import { getClues } from './clues.js'
 
 function usePreview(file) {
   const [url, setUrl] = useState(null)
@@ -49,6 +51,7 @@ export default function ProveFake() {
   const [result, setResult] = useState(null)
   const [copied, setCopied] = useState(false)
   const [search, setSearch] = useState(null)
+  const [clues, setClues] = useState(null)
   const fakeUrl = usePreview(fake)
   const originalUrl = usePreview(original)
 
@@ -58,6 +61,7 @@ export default function ProveFake() {
     setLoading(true)
     setError(null)
     setResult(null)
+    setClues(null)
     try {
       const r = await compareImages(fake, original)
       setResult(r)
@@ -77,11 +81,13 @@ export default function ProveFake() {
     setError(null)
     setResult(null)
     setSearch(null)
+    setClues(null)
     try {
       const { items, demo } = await loadVaultItems()
       const { match, best, checked } = await findSource(fake, demo ? [] : items)
       if (!match) {
         setSearch({ found: false, checked, bestScore: best ? best.score : null })
+        setClues(await getClues(fake))
         return
       }
       const originalFile = await itemToFile(match.item)
@@ -149,12 +155,13 @@ export default function ProveFake() {
       {search && !search.found && (
         <p className="mt-3 rounded-card bg-white p-3 text-sm text-nivara-900">
           No matching photo in your vault (checked {search.checked} photo{search.checked === 1 ? '' : 's'}
-            {search.bestScore != null ? `, closest ${Math.max(0, Math.round(search.bestScore * 100))}%` : ''}).
+          {search.bestScore != null ? `, closest ${Math.max(0, Math.round(search.bestScore * 100))}%` : ''}).
         </p>
       )}
 
-
       {error && <p role="alert" className="mt-3 text-sm text-danger">{error}</p>}
+
+      {clues && <CluesCard clues={clues} />}
 
       {result && result.verdict === 'manipulated' && (
         <section className="mt-4 rounded-card border-2 border-danger bg-white p-4" aria-live="polite">
