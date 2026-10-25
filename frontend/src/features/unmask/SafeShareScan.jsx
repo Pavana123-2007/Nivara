@@ -1,6 +1,8 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { safeShareScan } from '../../api.js'
+import { useI18n } from '../../i18n.jsx'
+import { Icon } from '../../icons.jsx'
+import { Page } from '../../ui.jsx'
 
 const mods = import.meta.glob('../cover/safeshare.js')
 
@@ -12,7 +14,7 @@ async function nameFor(id) {
 }
 
 export default function SafeShareScan() {
-  const navigate = useNavigate()
+  const { t } = useI18n()
   const [file, setFile] = useState(null)
   const [busy, setBusy] = useState(false)
   const [result, setResult] = useState(null) // { kind: 'found' | 'none' | 'error', text }
@@ -23,71 +25,52 @@ export default function SafeShareScan() {
     try {
       const r = await safeShareScan(file)
       if (!r.found) {
-        setResult({
-          kind: 'none',
-          text: 'No Safe Share mark found. Either this photo was never sent through Safe Share, or it was heavily compressed or edited after sharing.',
-        })
+        setResult({ kind: 'none', text: t('scan.noneText') })
       } else {
         const name = await nameFor(r.recipient_id)
-        const who = name ? `the copy you sent to ${name}` : `copy ${r.recipient_id}`
-        const sure = r.confidence === 'high' ? '' : ' (low confidence: treat it as a lead, not proof)'
-        setResult({ kind: 'found', text: `This photo came from ${who}${sure}.` })
+        const who = name ? t('scan.fromName', { name }) : t('scan.fromId', { id: r.recipient_id })
+        const sure = r.confidence === 'high' ? '' : ` ${t('scan.low')}`
+        setResult({ kind: 'found', text: who + sure })
       }
     } catch (e) {
-      setResult({ kind: 'error', text: e.message || 'Something went wrong. Please try again.' })
+      setResult({ kind: 'error', text: e.message || t('common.error') })
     } finally {
       setBusy(false)
     }
   }
 
-  const box =
-    result?.kind === 'found'
-      ? 'border-2 border-danger'
-      : result?.kind === 'error'
-        ? 'border-2 border-danger/40'
-        : 'border border-gray-100'
-
   return (
-    <main className="min-h-screen bg-nivara-50 px-4 py-6 pb-28 font-sans lg:px-10">
-      <div className="mx-auto max-w-md lg:max-w-2xl">
-        <button onClick={() => navigate('/nivara')} className="text-sm text-nivara-700">
-          ← Back
+    <Page title={t('tool.scan')} intro={t('scan.intro')}>
+      <section className="ui-card ui-stack">
+        <label className="ui-drop">
+          <Icon name={file ? 'image' : 'upload'} size={18} />
+          {file ? file.name : t('scan.choose')}
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="sr-only"
+            onChange={(e) => {
+              setFile(e.target.files?.[0] ?? null)
+              setResult(null)
+            }}
+          />
+        </label>
+        <button onClick={scan} disabled={!file || busy} className="ui-btn">
+          {busy ? t('scan.checking') : t('scan.check')}
         </button>
-        <h1 className="mt-2 text-2xl font-semibold text-nivara-900 lg:text-3xl">Who leaked this photo?</h1>
-        <p className="mt-1 text-sm text-nivara-700">
-          Choose the leaked photo. Nivara checks for the hidden mark in the copies you sent with Safe Share.
-        </p>
+      </section>
 
-        <div className="mt-6 rounded-card bg-white p-4 shadow-sm">
-          <label className="block cursor-pointer rounded-card border-2 border-dashed border-nivara-500 p-4 text-center text-sm text-nivara-700">
-            {file ? file.name : 'Choose the leaked photo'}
-            <input
-              type="file"
-              accept="image/jpeg,image/png,image/webp"
-              className="sr-only"
-              onChange={(e) => {
-                setFile(e.target.files?.[0] ?? null)
-                setResult(null)
-              }}
-            />
-          </label>
-          <button
-            onClick={scan}
-            disabled={!file || busy}
-            className="mt-3 w-full rounded-card bg-nivara-600 p-4 font-medium text-white disabled:opacity-40"
-          >
-            {busy ? 'Checking...' : 'Check for the mark'}
-          </button>
-        </div>
-
-        {result && (
-          <section className={`mt-4 rounded-card bg-white p-4 ${box}`} aria-live="polite">
-            {result.kind === 'found' && <p className="text-lg font-semibold text-danger">Mark found</p>}
-            {result.kind === 'none' && <p className="text-lg font-semibold text-nivara-900">No mark found</p>}
-            <p className={`mt-1 text-sm ${result.kind === 'error' ? 'text-danger' : 'text-gray-700'}`}>{result.text}</p>
-          </section>
-        )}
-      </div>
-    </main>
+      {result && result.kind === 'error' && (
+        <p role="alert" className="ui-msg ui-msg-error" style={{ marginTop: 14 }}>{t(result.text)}</p>
+      )}
+      {result && result.kind !== 'error' && (
+        <section className={`ui-card${result.kind === 'found' ? ' ui-card-danger' : ''}`} style={{ marginTop: 14 }} aria-live="polite">
+          <h2 className={`ui-h2${result.kind === 'found' ? ' ui-danger-text' : ''}`}>
+            {result.kind === 'found' ? t('scan.found') : t('scan.none')}
+          </h2>
+          <p className="ui-muted">{result.text}</p>
+        </section>
+      )}
+    </Page>
   )
 }

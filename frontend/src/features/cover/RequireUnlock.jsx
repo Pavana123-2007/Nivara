@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { isUnlocked, vanish } from './session.js'
 import { useShake } from './useShake.js'
 import { useI18n } from '../../i18n.jsx'
+import { Icon } from '../../icons.jsx'
 import { Link, Navigate, Outlet } from 'react-router-dom'
 
 const IDLE_MS = 2 * 60 * 1000 // no touches for 2 minutes
@@ -36,17 +37,12 @@ function LockedArea() {
   return (
   <>
     <Outlet />
-    <Link
-      to="/nivara/help"
-      className="fixed left-4 bottom-4 z-50 flex min-h-12 items-center rounded-full bg-white px-6 text-sm font-medium text-gray-900 shadow-lg"
-    >
+    <Link to="/nivara/help" className="float-btn float-help">
+      <Icon name="lifebuoy" size={18} />
       {t('tool.help')}
     </Link>
-    <button
-      onClick={vanish}
-      aria-label="Hide Nivara now"
-      className="fixed right-4 bottom-4 z-50 min-h-12 rounded-full bg-gray-900 px-6 text-sm font-medium text-white shadow-lg"
-    >
+    <button onClick={vanish} className="float-btn float-hide">
+      <Icon name="eyeOff" size={18} />
       {t('common.hide')}
     </button>
   </>

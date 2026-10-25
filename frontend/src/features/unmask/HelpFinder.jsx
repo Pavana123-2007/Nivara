@@ -1,35 +1,62 @@
-import { useNavigate } from 'react-router-dom'
+import { useI18n } from '../../i18n.jsx'
+import { Icon } from '../../icons.jsx'
+import { Page } from '../../ui.jsx'
 import { HELPLINES, LINKS } from './helplines.js'
 
-const Unverified = ({ item }) =>
-  import.meta.env.DEV && !item.verified ? (
-    <span className="ml-2 rounded bg-yellow-200 px-1 text-xs text-yellow-900">not verified yet</span>
+const LINK_KEYS = { 'https://cybercrime.gov.in/': 'help.cybercrime', 'https://stopncii.org/': 'help.stopncii' }
+
+function Unverified({ item }) {
+  const { t } = useI18n()
+  return import.meta.env.DEV && !item.verified ? (
+    <span className="ml-2 rounded bg-yellow-200 px-1 text-xs text-yellow-900">{t('help.unverified')}</span>
   ) : null
+}
 
+// Same grouped-list look as the home screen (.list / .row in index.css)
 export default function HelpFinder() {
-  const navigate = useNavigate()
+  const { t } = useI18n()
   return (
-    <main className="min-h-screen bg-nivara-50 p-4 font-sans">
-      <button onClick={() => navigate('/nivara')} className="text-sm text-nivara-700">← Back</button>
-      <h1 className="mt-2 text-2xl font-semibold text-nivara-900">Get help</h1>
-      <p className="mt-1 text-sm text-nivara-700">You don't have to face this alone. Tap a number to call.</p>
+    <Page title={t('tool.help')} intro={t('help.intro')}>
+      <nav className="list">
+        {HELPLINES.map((h) => {
+          const urgent = h.number === '112'
+          return (
+            <a key={h.number} href={`tel:${h.number}`} className="row">
+              <span
+                className="row-icon"
+                style={urgent ? { background: 'var(--danger-soft)', color: 'var(--danger)' } : undefined}
+              >
+                <Icon name="phone" size={18} />
+              </span>
+              <span className="row-text">
+                <span className="row-title">
+                  {t(`help.${h.number}`)}
+                  <Unverified item={h} />
+                </span>
+                <span className="row-desc">{t(`help.${h.number}note`)}</span>
+              </span>
+              <span style={{ fontSize: 18, fontWeight: 650, fontVariantNumeric: 'tabular-nums', color: urgent ? 'var(--danger-ink)' : 'var(--ink)' }}>
+                {h.number}
+              </span>
+            </a>
+          )
+        })}
+      </nav>
 
-      <div className="mt-4 grid gap-3">
-        {HELPLINES.map((h) => (
-          <a key={h.number} href={`tel:${h.number}`} className="flex items-center justify-between rounded-card bg-white p-4 shadow-sm">
-            <span>
-              <span className="block font-medium text-nivara-900">{h.name}<Unverified item={h} /></span>
-              <span className="block text-sm text-nivara-700">{h.note}</span>
-            </span>
-            <span className="text-2xl font-semibold text-nivara-600">{h.number}</span>
-          </a>
-        ))}
+      <h2 className="group-title" style={{ marginTop: 24 }}>{t('help.online')}</h2>
+      <nav className="list">
         {LINKS.map((l) => (
-          <a key={l.url} href={l.url} target="_blank" rel="noreferrer" className="rounded-card bg-white p-4 text-nivara-900 shadow-sm">
-            {l.name} ↗<Unverified item={l} />
+          <a key={l.url} href={l.url} target="_blank" rel="noreferrer" className="row" style={{ minHeight: 60 }}>
+            <span className="row-text">
+              <span className="row-title">
+                {LINK_KEYS[l.url] ? t(LINK_KEYS[l.url]) : l.name}
+                <Unverified item={l} />
+              </span>
+            </span>
+            <Icon name="external" size={17} className="row-chevron" />
           </a>
         ))}
-      </div>
-    </main>
+      </nav>
+    </Page>
   )
 }

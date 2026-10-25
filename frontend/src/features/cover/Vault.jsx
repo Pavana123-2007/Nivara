@@ -1,64 +1,27 @@
-
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useI18n } from '../../i18n.jsx'
+import { Icon } from '../../icons.jsx'
+import { Page } from '../../ui.jsx'
 import { addFile, addNote, deleteItem, listItems } from './vault.js'
 
-const pageStyle = {
-  minHeight: '100vh',
-  background: '#1c1c1e',
-  color: '#f5f5f7',
-  padding: '24px',
-  fontFamily: 'Arial, sans-serif',
-}
-
-const cardStyle = {
-  background: '#29292d',
-  border: '1px solid #48484d',
-  borderRadius: '12px',
-  padding: '18px',
-  marginTop: '20px',
-}
-
-const buttonStyle = {
-  background: '#333336',
-  color: '#ffffff',
-  border: '1px solid #55555b',
-  borderRadius: '8px',
-  padding: '12px 16px',
-  cursor: 'pointer',
-  fontSize: '14px',
-}
-
-const inputStyle = {
-  display: 'block',
-  width: '100%',
-  boxSizing: 'border-box',
-  background: '#29292d',
-  color: '#ffffff',
-  border: '1px solid #777780',
-  borderRadius: '8px',
-  padding: '12px',
-  fontSize: '15px',
-}
-
+// Saved photos stay blurred until tapped, in case someone glances at the screen
 function Thumb({ src, label }) {
+  const { t } = useI18n()
   const [shown, setShown] = useState(false)
 
   return (
     <button
       type="button"
       onClick={() => setShown((value) => !value)}
-      aria-label={shown ? `Hide ${label}` : `Show ${label}`}
+      aria-label={shown ? label : `${t('common.tapToShow')}: ${label}`}
       style={{
         position: 'relative',
         display: 'block',
         width: '100%',
         padding: 0,
         overflow: 'hidden',
-        borderRadius: '8px',
-        background: '#111113',
-        border: '1px solid #48484d',
-        cursor: 'pointer',
+        borderRadius: 10,
+        background: 'var(--surface-2)',
       }}
     >
       <img
@@ -67,7 +30,7 @@ function Thumb({ src, label }) {
         style={{
           display: 'block',
           width: '100%',
-          maxHeight: '300px',
+          maxHeight: 300,
           objectFit: 'contain',
           filter: shown ? 'none' : 'blur(18px)',
         }}
@@ -80,11 +43,12 @@ function Thumb({ src, label }) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: '#ffffff',
-            background: 'rgba(0,0,0,0.25)',
+            color: 'white',
+            fontWeight: 650,
+            background: 'rgba(24, 23, 28, 0.28)',
           }}
         >
-          Tap to reveal
+          {t('common.tapToShow')}
         </span>
       )}
     </button>
@@ -92,12 +56,14 @@ function Thumb({ src, label }) {
 }
 
 export default function Vault() {
-  const navigate = useNavigate()
+  const { t, locale } = useI18n()
   const [items, setItems] = useState([])
   const [note, setNote] = useState('')
   const [type, setType] = useState('photo')
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState(null)
+  const [error, setError] = useState(null) // a translation key or a message
+
+  const typeName = (value) => (value === 'note' ? t('vault.note') : value === 'screenshot' ? t('vault.screenshot') : t('vault.photo'))
 
   async function refresh() {
     try {
@@ -105,7 +71,7 @@ export default function Vault() {
       setItems(savedItems)
       setError(null)
     } catch (err) {
-      setError(err.message || 'Could not load the vault.')
+      setError(err.message || 'vault.loadError')
     }
   }
 
@@ -121,7 +87,7 @@ export default function Vault() {
       await task()
       await refresh()
     } catch (err) {
-      setError(err.message || 'Something went wrong.')
+      setError(err.message || 'common.error')
     } finally {
       setBusy(false)
     }
@@ -136,7 +102,7 @@ export default function Vault() {
     run(async () => {
       for (const file of files) {
         if (!file.type.startsWith('image/')) {
-          throw new Error('Please select image files only.')
+          throw new Error('vault.imagesOnly')
         }
         await addFile(file, type)
       }
@@ -146,7 +112,7 @@ export default function Vault() {
   function onNote() {
     const text = note.trim()
     if (!text) {
-      setError('Write a note before saving.')
+      setError('vault.writeFirst')
       return
     }
 
@@ -157,237 +123,95 @@ export default function Vault() {
   }
 
   function onDelete(id) {
-    if (
-      window.confirm(
-        'Delete this item from the vault? This cannot be undone.',
-      )
-    ) {
+    if (window.confirm(t('vault.confirmDelete'))) {
       run(() => deleteItem(id))
     }
   }
 
   return (
-    <main style={pageStyle}>
-      <div style={{ maxWidth: '900px', margin: '0 auto' }}>
-        <button
-          type="button"
-          onClick={() => navigate('/nivara')}
-          style={{
-            ...buttonStyle,
-            marginBottom: '20px',
-          }}
-        >
-          ← Back
-        </button>
-
-        <h1 style={{ fontSize: '30px', margin: '0 0 10px' }}>
-          Evidence vault
-        </h1>
-
-        <p style={{ color: '#c4c4ce', lineHeight: 1.6 }}>
-          Saved here, locked with your code. Nothing goes to your
-          gallery or online. Each item gets a fingerprint and the
-          time you saved it.
-        </p>
-
-        <section style={cardStyle}>
-          <h2 style={{ fontSize: '20px', marginTop: 0 }}>
-            Add evidence
-          </h2>
-
-          <p style={{ color: '#c4c4ce', marginBottom: '12px' }}>
-            Choose what type of image you want to save.
-          </p>
-
-          <div
-            style={{
-              display: 'flex',
-              flexWrap: 'wrap',
-              gap: '10px',
-              marginBottom: '18px',
-            }}
-          >
+    <Page title={t('tool.vault')} intro={t('vault.intro')} wide>
+      <div className="ui-row">
+        <section className="ui-card ui-stack" style={{ alignContent: 'start' }}>
+          <h2 className="ui-h2">{t('vault.add')}</h2>
+          <p className="ui-muted">{t('vault.typeHint')}</p>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
             {['photo', 'screenshot'].map((value) => (
-              <button
-                type="button"
-                key={value}
-                onClick={() => setType(value)}
-                aria-pressed={type === value}
-                style={{
-                  ...buttonStyle,
-                  background: type === value ? '#7654d6' : '#333336',
-                  borderColor: type === value ? '#a994ff' : '#55555b',
-                }}
-              >
-                {type === value ? '✓ ' : ''}
-                {value === 'photo' ? 'Photo' : 'Screenshot'}
+              <button type="button" key={value} onClick={() => setType(value)} aria-pressed={type === value} className="ui-chip">
+                {type === value && <Icon name="check" size={16} />}
+                {typeName(value)}
               </button>
             ))}
           </div>
-
-          <label
-            htmlFor="vault-images"
-            style={{ display: 'block', marginBottom: '8px' }}
-          >
-            Select images
+          <label className="ui-drop">
+            <Icon name="upload" size={18} />
+            {busy ? t('vault.saving') : t('vault.select')}
+            <input type="file" accept="image/*" multiple disabled={busy} onChange={onFiles} className="sr-only" />
           </label>
-
-          <input
-            id="vault-images"
-            type="file"
-            accept="image/*"
-            multiple
-            disabled={busy}
-            onChange={onFiles}
-            style={{
-              ...inputStyle,
-              marginBottom: '12px',
-            }}
-          />
-
-          <p style={{ color: '#c4c4ce', fontSize: '13px' }}>
-            Images are encrypted before being saved.
+          <p className="ui-small" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <Icon name="lock" size={14} />
+            {t('vault.encrypted')}
           </p>
         </section>
 
-        <section style={cardStyle}>
-          <h2 style={{ fontSize: '20px', marginTop: 0 }}>
-            Add a private note
-          </h2>
-
+        <section className="ui-card ui-stack" style={{ alignContent: 'start' }}>
+          <h2 className="ui-h2">{t('vault.noteTitle')}</h2>
           <textarea
             value={note}
             onChange={(event) => setNote(event.target.value)}
-            placeholder="Write a note..."
+            placeholder={t('vault.notePlaceholder')}
             rows={5}
             disabled={busy}
-            style={{
-              ...inputStyle,
-              resize: 'vertical',
-              lineHeight: 1.6,
-            }}
+            className="ui-input"
+            style={{ resize: 'vertical', lineHeight: 1.6, marginTop: 0 }}
           />
-
-          <button
-            type="button"
-            onClick={onNote}
-            disabled={busy || !note.trim()}
-            style={{
-              ...buttonStyle,
-              marginTop: '12px',
-              background: '#7654d6',
-              opacity: busy || !note.trim() ? 0.6 : 1,
-            }}
-          >
-            {busy ? 'Saving...' : 'Save note'}
+          <button type="button" onClick={onNote} disabled={busy || !note.trim()} className="ui-btn">
+            {busy ? t('vault.saving') : t('vault.saveNote')}
           </button>
         </section>
-
-        {error && (
-          <p
-            role="alert"
-            style={{
-              marginTop: '16px',
-              padding: '12px',
-              background: '#492326',
-              color: '#ffb8bd',
-              borderRadius: '8px',
-            }}
-          >
-            {error}
-          </p>
-        )}
-
-        <h2 style={{ fontSize: '22px', marginTop: '28px' }}>
-          Saved ({items.length})
-        </h2>
-
-        {items.length === 0 && !error && (
-          <p style={{ color: '#c4c4ce', marginTop: '12px' }}>
-            Nothing saved yet. Add an image or write a note above.
-          </p>
-        )}
-
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-            gap: '16px',
-            marginTop: '16px',
-          }}
-        >
-          {items.map((item) => (
-            <article
-              key={item.id}
-              style={{
-                ...cardStyle,
-                marginTop: 0,
-                minWidth: 0,
-              }}
-            >
-              <p style={{ fontWeight: 'bold', textTransform: 'capitalize' }}>
-                {item.type}
-              </p>
-
-              <p
-                style={{
-                  fontSize: '12px',
-                  color: '#c4c4ce',
-                  marginTop: '8px',
-                }}
-              >
-                Saved {new Date(item.created_at).toLocaleString()}
-              </p>
-
-              {item.dataUrl && (
-                <div style={{ marginTop: '14px' }}>
-                  <Thumb
-                    src={item.dataUrl}
-                    label={item.type}
-                  />
-                </div>
-              )}
-
-              {item.text && (
-                <p
-                  style={{
-                    marginTop: '14px',
-                    whiteSpace: 'pre-wrap',
-                    overflowWrap: 'anywhere',
-                    lineHeight: 1.6,
-                  }}
-                >
-                  {item.text}
-                </p>
-              )}
-
-              <p
-                style={{
-                  marginTop: '14px',
-                  fontSize: '11px',
-                  color: '#c4c4ce',
-                  overflowWrap: 'anywhere',
-                }}
-              >
-                SHA-256: {item.sha256}
-              </p>
-
-              <button
-                type="button"
-                onClick={() => onDelete(item.id)}
-                disabled={busy}
-                style={{
-                  ...buttonStyle,
-                  color: '#ffb8bd',
-                  marginTop: '12px',
-                }}
-              >
-                Delete
-              </button>
-            </article>
-          ))}
-        </div>
       </div>
-    </main>
+
+      {error && <p role="alert" className="ui-msg ui-msg-error" style={{ marginTop: 14 }}>{t(error)}</p>}
+
+      <h2 className="ui-h2" style={{ fontSize: 21, marginTop: 28 }}>{t('vault.saved', { n: items.length })}</h2>
+
+      {items.length === 0 && !error && <p className="ui-muted" style={{ marginTop: 8 }}>{t('vault.empty')}</p>}
+
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))',
+          gap: 14,
+          marginTop: 14,
+        }}
+      >
+        {items.map((item) => (
+          <article key={item.id} className="ui-card" style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div>
+              <p style={{ fontWeight: 700, margin: 0 }}>{typeName(item.type)}</p>
+              <p className="ui-small">{t('vault.savedAt', { date: new Date(item.created_at).toLocaleString(locale) })}</p>
+            </div>
+
+            {item.dataUrl && <Thumb src={item.dataUrl} label={typeName(item.type)} />}
+
+            {item.text && (
+              <p style={{ margin: 0, whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', lineHeight: 1.6 }}>{item.text}</p>
+            )}
+
+            <p className="ui-small" style={{ overflowWrap: 'anywhere', fontSize: 11 }}>SHA-256: {item.sha256}</p>
+
+            <button
+              type="button"
+              onClick={() => onDelete(item.id)}
+              disabled={busy}
+              className="ui-btn ui-btn-outline"
+              style={{ marginTop: 'auto', minHeight: 40, color: 'var(--danger-ink)' }}
+            >
+              <Icon name="trash" size={16} />
+              {t('vault.delete')}
+            </button>
+          </article>
+        ))}
+      </div>
+    </Page>
   )
 }

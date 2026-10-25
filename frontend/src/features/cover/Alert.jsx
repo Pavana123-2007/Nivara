@@ -1,60 +1,8 @@
 ﻿import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { sendAlert } from '../../api.js'
-import { loadSecret, saveSecret } from './vault.js'
 import { useI18n } from '../../i18n.jsx'
-
-const styles = {
-  page: {
-    minHeight: '100vh',
-    padding: 24,
-    background: '#f5f3ed',
-    color: '#30244b',
-    fontFamily: 'Arial, sans-serif',
-    boxSizing: 'border-box',
-  },
-  card: {
-    background: '#fff',
-    border: '1px solid #ded9e8',
-    borderRadius: 12,
-    padding: 20,
-    marginTop: 16,
-    boxShadow: '0 2px 4px rgba(0,0,0,0.08)',
-  },
-  label: {
-    display: 'block',
-    fontSize: 14,
-    fontWeight: 600,
-    marginTop: 16,
-    color: '#30244b',
-  },
-  input: {
-    display: 'block',
-    boxSizing: 'border-box',
-    width: '100%',
-    minHeight: 44,
-    marginTop: 8,
-    padding: 12,
-    border: '1px solid #c9c2d8',
-    borderRadius: 8,
-    background: '#fff',
-    color: '#30244b',
-    fontSize: 16,
-  },
-  button: {
-    width: '100%',
-    minHeight: 46,
-    marginTop: 18,
-    padding: 12,
-    border: 0,
-    borderRadius: 8,
-    background: '#59418c',
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 600,
-    cursor: 'pointer',
-  },
-}
+import { Page } from '../../ui.jsx'
+import { loadSecret, saveSecret } from './vault.js'
 
 function getLocation() {
   return new Promise((resolve) => {
@@ -74,7 +22,6 @@ function getLocation() {
 
 export default function Alert() {
   const { t } = useI18n()
-  const navigate = useNavigate()
   const [contact, setContact] = useState(null)
   const [editing, setEditing] = useState(true)
   const [form, setForm] = useState({
@@ -83,6 +30,7 @@ export default function Alert() {
     myName: '',
   })
   const [withLocation, setWithLocation] = useState(false)
+  // message is a translation key; vars fill it, text is a raw server message
   const [status, setStatus] = useState(null)
 
   useEffect(() => {
@@ -100,12 +48,7 @@ export default function Alert() {
         setEditing(false)
       })
       .catch(() => {
-        if (active) {
-          setStatus({
-            kind: 'error',
-            message: 'Could not load the saved contact. Please unlock Nivara.',
-          })
-        }
+        if (active) setStatus({ kind: 'error', message: 'alert.loadError' })
       })
 
     return () => {
@@ -128,10 +71,7 @@ export default function Alert() {
     }
 
     if (!saved.contactName || !saved.chatId) {
-      setStatus({
-        kind: 'error',
-        message: 'Enter the contact name and Telegram chat ID.',
-      })
+      setStatus({ kind: 'error', message: 'alert.missing' })
       return
     }
 
@@ -139,19 +79,16 @@ export default function Alert() {
       await saveSecret('contact', saved)
       setContact(saved)
       setEditing(false)
-      setStatus({ kind: 'saved', message: 'Trusted contact saved securely.' })
+      setStatus({ kind: 'saved', message: 'alert.savedOk' })
     } catch {
-      setStatus({
-        kind: 'error',
-        message: 'Could not save. Make sure Nivara is unlocked.',
-      })
+      setStatus({ kind: 'error', message: 'alert.saveError' })
     }
   }
 
   async function send() {
     if (!contact?.chatId) return
 
-    setStatus({ kind: 'sending', message: 'Sending alert…' })
+    setStatus({ kind: 'sending', message: 'alert.sendingMsg' })
 
     try {
       const location = withLocation ? await getLocation() : null
@@ -165,98 +102,57 @@ export default function Alert() {
 
       setStatus({
         kind: 'sent',
-        message: `Alert sent to ${contact.contactName}${location ? ' with your location' : ''}.`,
+        message: location ? 'alert.sentLoc' : 'alert.sent',
+        vars: { name: contact.contactName },
       })
     } catch (error) {
-      setStatus({
-        kind: 'error',
-        message: error.message || 'Could not send the alert.',
-      })
+      setStatus({ kind: 'error', message: 'alert.sendError', text: error.message })
     }
   }
 
   function field(name, label, optional = false) {
     return (
-      <label key={name} style={styles.label}>
+      <label key={name} className="ui-label">
         {label}
-        <input
-          name={name}
-          value={form[name]}
-          onChange={updateField}
-          required={!optional}
-          style={styles.input}
-        />
+        <input name={name} value={form[name]} onChange={updateField} required={!optional} className="ui-input" />
       </label>
     )
   }
 
+  const statusClass = status?.kind === 'error' ? 'ui-msg-error' : status?.kind === 'sending' ? 'ui-msg-info' : 'ui-msg-ok'
+
   return (
-    <main style={styles.page}>
-      <button
-        type="button"
-        onClick={() => navigate('/nivara')}
-        style={{
-          border: 0,
-          background: 'transparent',
-          color: '#59418c',
-          fontSize: 16,
-          cursor: 'pointer',
-          padding: '8px 0',
-          minHeight: 44,
-        }}
-      >
-        {t('common.back')}
-      </button>
-
-      <h1 style={{ fontSize: 30, margin: '20px 0 8px' }}>{t('tool.alert')}</h1>
-      <p style={{ fontSize: 14, lineHeight: 1.6 }}>
-        Choose one trusted person who can receive your Telegram alert.
-      </p>
-
+    <Page title={t('tool.alert')} intro={t('alert.intro')}>
       {editing ? (
-        <section style={styles.card}>
-          {field('contactName', 'Trusted contact name')}
-          {field('chatId', 'Telegram chat ID')}
-          {field('myName', 'Your name in the alert (optional)', true)}
-
-          <button type="button" onClick={save} style={styles.button}>
-            Save trusted contact
+        <section className="ui-card ui-stack">
+          {field('contactName', t('alert.contactName'))}
+          {field('chatId', t('alert.chatId'))}
+          {field('myName', t('alert.myName'), true)}
+          <button type="button" onClick={save} className="ui-btn">
+            {t('alert.save')}
           </button>
         </section>
       ) : (
-        <section style={styles.card}>
-          <p style={{ margin: 0, fontSize: 14 }}>Trusted contact</p>
-          <h2 style={{ fontSize: 20 }}>{contact?.contactName}</h2>
+        <section className="ui-card ui-stack">
+          <div>
+            <p className="ui-small">{t('alert.contact')}</p>
+            <p style={{ fontSize: 20, fontWeight: 750, margin: '2px 0 0' }}>{contact?.contactName}</p>
+          </div>
 
+          {/* The button reads like an everyday message, in case someone sees the screen */}
           <button
             type="button"
             onClick={send}
             disabled={status?.kind === 'sending'}
-            style={{
-              ...styles.button,
-              background: '#b42332',
-              opacity: status?.kind === 'sending' ? 0.6 : 1,
-            }}
+            className="ui-btn ui-btn-danger"
+            style={{ minHeight: 60, fontSize: 17 }}
           >
-            {status?.kind === 'sending' ? 'Sending…' : t('alert.button')}
+            {status?.kind === 'sending' ? t('alert.sending') : t('alert.button')}
           </button>
 
-          <label
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 10,
-              marginTop: 18,
-              fontSize: 14,
-              minHeight: 44,
-            }}
-          >
-            <input
-              type="checkbox"
-              checked={withLocation}
-              onChange={(event) => setWithLocation(event.target.checked)}
-            />
-            Also share my location (optional)
+          <label className="ui-check">
+            <input type="checkbox" checked={withLocation} onChange={(event) => setWithLocation(event.target.checked)} />
+            {t('alert.location')}
           </label>
 
           <button
@@ -265,31 +161,23 @@ export default function Alert() {
               setStatus(null)
               setEditing(true)
             }}
-            style={{
-              ...styles.button,
-              background: '#59418c',
-            }}
+            className="ui-btn ui-btn-soft"
           >
-            Change trusted contact
+            {t('alert.change')}
           </button>
         </section>
       )}
 
       {status && (
-        <p
-          role={status.kind === 'error' ? 'alert' : 'status'}
-          style={{
-            ...styles.card,
-            color: status.kind === 'error' ? '#b42332' : '#17633a',
-          }}
-        >
-          {status.message}
+        <p role={status.kind === 'error' ? 'alert' : 'status'} className={`ui-msg ${statusClass}`} style={{ marginTop: 14 }}>
+          {t(status.message, status.vars)}
+          {status.text && ` (${t(status.text)})`}
         </p>
       )}
 
-      <p style={{ textAlign: 'center', marginTop: 24, fontSize: 14 }}>
-        If you are in immediate danger in India, call 112.
+      <p className="ui-muted" style={{ textAlign: 'center', marginTop: 24, fontWeight: 650 }}>
+        {t('common.danger')}
       </p>
-    </main>
+    </Page>
   )
 }

@@ -19,10 +19,18 @@ export function I18nProvider({ children }) {
     } catch {}
   }
 
-  const t = (key) => strings[lang]?.[key] ?? strings.en[key] ?? key
+  // t('alert.sent', { name: 'Asha' }) fills {name} in the translated text
+  const t = (key, vars) => {
+    let text = strings[lang]?.[key] ?? strings.en[key] ?? key
+    for (const [name, value] of Object.entries(vars || {})) text = text.replaceAll(`{${name}}`, value)
+    return text
+  }
+
+  // for dates: new Date(...).toLocaleString(locale)
+  const locale = { en: 'en-IN', hi: 'hi-IN', kn: 'kn-IN' }[lang] || 'en-IN'
 
   return (
-    <I18n.Provider value={{ lang, setLang: changeLanguage, t }}>
+    <I18n.Provider value={{ lang, setLang: changeLanguage, t, locale }}>
       {children}
     </I18n.Provider>
   )
@@ -38,29 +46,20 @@ export function LanguageToggle() {
   const { lang, setLang } = useI18n()
 
   return (
-    <div role="group" aria-label="Choose language" style={{
-      display: 'flex', gap: 6, flexWrap: 'wrap'
-    }}>
+    // Segmented control; styles in index.css (.seg)
+    <div role="group" aria-label="Language" className="seg">
       {[
-        ['en', 'English'],
-        ['hi', 'हिन्दी'],
-        ['kn', 'ಕನ್ನಡ']
-      ].map(([code, label]) => (
+        ['en', 'EN', 'English'],
+        ['hi', 'हिन्दी', 'हिन्दी'],
+        ['kn', 'ಕನ್ನಡ', 'ಕನ್ನಡ'],
+      ].map(([code, label, name]) => (
         <button
           key={code}
           type="button"
+          lang={code}
           onClick={() => setLang(code)}
           aria-pressed={lang === code}
-          style={{
-            minHeight: 40,
-            padding: '8px 11px',
-            borderRadius: 10,
-            border: lang === code ? '2px solid #7554B4' : '1px solid #E7E0F0',
-            background: lang === code ? '#EEE9F8' : 'white',
-            color: '#30234C',
-            cursor: 'pointer',
-            fontWeight: 650
-          }}
+          aria-label={name}
         >
           {label}
         </button>

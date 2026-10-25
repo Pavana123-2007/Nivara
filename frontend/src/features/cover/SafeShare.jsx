@@ -1,10 +1,12 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { safeShareMark } from '../../api.js'
+import { useI18n } from '../../i18n.jsx'
+import { Icon } from '../../icons.jsx'
+import { Page } from '../../ui.jsx'
 import { newRecipientIds, saveRecipients } from './safeshare.js'
 
 export default function SafeShare() {
-  const navigate = useNavigate()
+  const { t } = useI18n()
   const [file, setFile] = useState(null)
   const [names, setNames] = useState('')
   const [copies, setCopies] = useState([])
@@ -23,44 +25,49 @@ export default function SafeShare() {
       await saveRecipients(pairs)
       setCopies(res.copies.map((c) => ({ ...c, name: pairs.find((p) => p.id === c.recipient_id)?.name })))
     } catch (e) {
-      setError(e.message)
+      setError(e.message || t('common.error'))
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <main className="min-h-screen bg-nivara-50 p-4 pb-24 font-sans">
-      <button onClick={() => navigate('/nivara')} className="min-h-11 text-sm text-nivara-700">← Back</button>
-      <h1 className="text-2xl font-semibold text-nivara-900">Safe Share</h1>
-      <p className="mt-1 text-sm text-nivara-700">
-        Each person gets a copy that looks the same but carries an invisible mark. If a photo leaks, Nivara can show whose
-        copy it was. Names stay on this phone.
-      </p>
-      <section className="mt-4 grid gap-3 rounded-card bg-white p-4 shadow-sm">
-        <label className="block min-h-11 cursor-pointer rounded-card border-2 border-dashed border-nivara-500 p-3 text-center text-sm text-nivara-700">
-          {file ? file.name : 'Choose a photo'}
+    <Page title={t('tool.safeshare')} intro={t('share.intro')}>
+      <section className="ui-card ui-stack">
+        <label className="ui-drop">
+          <Icon name={file ? 'image' : 'upload'} size={18} />
+          {file ? file.name : t('share.choose')}
           <input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
         </label>
-        <label className="text-sm text-nivara-900">
-          Who are you sending it to? One name per line (max 10)
-          <textarea value={names} onChange={(e) => setNames(e.target.value)} rows={4} className="mt-1 w-full rounded-lg border p-2" />
+        <label className="ui-label">
+          {t('share.who')}
+          <textarea value={names} onChange={(e) => setNames(e.target.value)} rows={4} className="ui-input" />
         </label>
-        <button onClick={make} disabled={!file || !list.length || busy} className="min-h-11 rounded-card bg-nivara-600 p-3 text-white disabled:opacity-40">
-          {busy ? 'Making copies...' : `Make ${list.length || ''} marked copies`}
+        <button onClick={make} disabled={!file || !list.length || busy} className="ui-btn">
+          {busy ? t('share.making') : list.length ? t('share.make', { n: list.length }) : t('share.makeNone')}
         </button>
-        {error && <p role="alert" className="text-sm text-danger">{error}</p>}
+        <p className="ui-small">{t('share.tip')}</p>
+        {error && <p role="alert" className="ui-msg ui-msg-error">{t(error)}</p>}
       </section>
+
       {copies.length > 0 && (
-        <ul className="mt-4 grid gap-2">
+        <ul className="ui-stack" style={{ marginTop: 14, padding: 0, listStyle: 'none' }}>
           {copies.map((c) => (
-            <li key={c.recipient_id} className="flex items-center justify-between rounded-card bg-white p-3 shadow-sm">
-              <span className="text-nivara-900">For {c.name}</span>
-              <a href={c.image} download={`photo_${c.recipient_id}.${c.image.startsWith('data:image/png') ? 'png' : 'jpg'}`} className="min-h-11 rounded-lg bg-nivara-100 px-4 py-3 text-sm text-nivara-900">Download</a>
+            <li key={c.recipient_id} className="ui-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '12px 14px 12px 18px' }}>
+              <span style={{ fontWeight: 650 }}>{t('share.for', { name: c.name })}</span>
+              <a
+                href={c.image}
+                download={`photo_${c.recipient_id}.${c.image.startsWith('data:image/png') ? 'png' : 'jpg'}`}
+                className="ui-btn ui-btn-soft"
+                style={{ width: 'auto', minHeight: 44 }}
+              >
+                <Icon name="download" size={16} />
+                {t('share.download')}
+              </a>
             </li>
           ))}
         </ul>
       )}
-    </main>
+    </Page>
   )
 }

@@ -1,6 +1,16 @@
 
 const BASE = (import.meta.env.VITE_API_URL || 'http://localhost:8000').trim().replace(/\/+$/, '') // a stray space, newline or trailing / gives 404s
 
+// fetch() only throws when the server can't be reached at all (offline, server asleep or
+// restarting, or not allowed by CORS). The message is a translation key, shown with t().
+export async function request(url, options) {
+  try {
+    return await fetch(url, options)
+  } catch {
+    throw Object.assign(new Error('common.network'), { code: 'network' })
+  }
+}
+
 async function handle(res) {
   const data = await res.json().catch(() => null)
 
@@ -19,7 +29,7 @@ async function handle(res) {
 }
 
 export async function health() {
-  return handle(await fetch(`${BASE}/api/health`))
+  return handle(await request(`${BASE}/api/health`))
 }
 
 // Member 2
@@ -29,7 +39,7 @@ export async function compareImages(fakeFile, originalFile) {
   form.append('original', originalFile)
 
   return handle(
-    await fetch(`${BASE}/api/compare`, {
+    await request(`${BASE}/api/compare`, {
       method: 'POST',
       body: form,
     }),
@@ -39,7 +49,7 @@ export async function compareImages(fakeFile, originalFile) {
 // Member 2
 export async function getVerification(id) {
   return handle(
-    await fetch(`${BASE}/api/verify/${encodeURIComponent(id)}`),
+    await request(`${BASE}/api/verify/${encodeURIComponent(id)}`),
   )
 }
 
@@ -51,7 +61,7 @@ export async function sendAlert({
   lng = null,
 }) {
   return handle(
-    await fetch(`${BASE}/api/alert`, {
+    await request(`${BASE}/api/alert`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -71,7 +81,7 @@ export async function safeShareMark(imageFile, recipientIds) {
   form.append('recipients', JSON.stringify(recipientIds))
 
   return handle(
-    await fetch(`${BASE}/api/safeshare/mark`, {
+    await request(`${BASE}/api/safeshare/mark`, {
       method: 'POST',
       body: form,
     }),
@@ -84,7 +94,7 @@ export async function safeShareScan(imageFile) {
   form.append('image', imageFile)
 
   return handle(
-    await fetch(`${BASE}/api/safeshare/scan`, {
+    await request(`${BASE}/api/safeshare/scan`, {
       method: 'POST',
       body: form,
     }),
