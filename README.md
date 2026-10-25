@@ -180,7 +180,7 @@ python tests/robustness.py
 ---
 
 ## Honest limitations
-- **Proof needs her original photo.** Without it, Nivara gives clues (AI labels, metadata), never a verdict. WhatsApp, Instagram and screenshots strip AI labels, so "no label" never means "real".
+-Proof needs her original photo, either uploaded or already saved in her Nivara vault, where Nivara finds it automatically from the fake alone. If no original exists anywhere, Nivara gives clues (AI labels, metadata), never a verdict. WhatsApp, Instagram and screenshots strip AI labels, so "no label" never means "real".
 - The vault lives on her phone: clearing browser data or losing the phone loses it (encrypted backup is future work).
 - Safe Share marks may not survive heavy compression or editing.
 - Render's free plan sleeps when idle; the first request can take about a minute.
