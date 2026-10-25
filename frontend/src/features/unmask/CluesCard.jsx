@@ -1,6 +1,5 @@
 // Member 2 – Clues card: shown when no original is found. Clues, not proof.
 import { useNavigate } from 'react-router-dom'
-import SpreadFinder from './SpreadFinder.jsx'
 
 const LEVELS = {
   strong: {
@@ -80,10 +79,8 @@ export default function CluesCard({ clues }) {
       </ul>
 
       <p className="mt-4 text-sm text-nivara-900">
-        For real proof, Nivara needs your original photo. Save your photos in the Nivara vault, or try finding the
-        original online:
+        For real proof, Nivara needs your original photo. Save your photos in the Nivara vault, then check again.
       </p>
-      <SpreadFinder />
       <button onClick={() => navigate('/nivara/help')} className="mt-3 w-full rounded-card bg-nivara-100 p-3 text-nivara-900">
         Get help
       </button>

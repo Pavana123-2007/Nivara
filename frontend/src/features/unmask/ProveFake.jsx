@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { compareImages } from '../../api.js'
 import BlurReveal from './BlurReveal.jsx'
-import SpreadFinder from './SpreadFinder.jsx'
 import CluesCard from './CluesCard.jsx'
 import { setLastResult } from './lastResult.js'
 import { findSource, itemToFile } from './findSource.js'
@@ -214,7 +213,6 @@ export default function ProveFake() {
                     Takedown complaint
                   </button>
                 </div>
-                <SpreadFinder />
               </section>
             )}
 
