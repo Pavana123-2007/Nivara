@@ -6,14 +6,14 @@ import { tryUnlock } from '../features/cover/unlock.js'
 const OPS = {
   '+': (a, b) => a + b,
   '-': (a, b) => a - b,
-  '\u00D7': (a, b) => a * b,
-  '\u00F7': (a, b) => (b === 0 ? NaN : a / b),
+  '×': (a, b) => a * b,
+  '÷': (a, b) => (b === 0 ? NaN : a / b),
 }
 
 const LABELS = {
   '-': 'minus',
-  '\u00D7': 'times',
-  '\u00F7': 'divide',
+  '×': 'times',
+  '÷': 'divide',
   '+': 'plus',
   '%': 'percent',
   AC: 'clear',
@@ -25,8 +25,8 @@ const format = (n) =>
 const START = { display: '0', stored: null, op: null, fresh: true, code: '' }
 
 const ROWS = [
-  ['AC', '\u00B1', '%', '\u00F7'],
-  ['7', '8', '9', '\u00D7'],
+  ['AC', '±', '%', '÷'],
+  ['7', '8', '9', '×'],
   ['4', '5', '6', '-'],
   ['1', '2', '3', '+'],
   ['0', '.', '='],
@@ -40,6 +40,7 @@ export default function Calc() {
   const digit = (d) => {
     setS((p) => {
       if (p.display === 'Error') p = START
+
       const display =
         p.fresh || p.display === '0'
           ? d
@@ -72,9 +73,11 @@ export default function Calc() {
     setS((p) => {
       if (p.display === 'Error') return START
       const cur = parseFloat(p.display)
+
       if (p.op && !p.fresh) {
         const r = OPS[p.op](p.stored, cur)
         const ok = Number.isFinite(r)
+
         return {
           display: format(r),
           stored: ok ? r : null,
@@ -83,6 +86,7 @@ export default function Calc() {
           code: null,
         }
       }
+
       return { ...p, stored: cur, op, fresh: true, code: null }
     })
   }
@@ -108,6 +112,7 @@ export default function Calc() {
 
     if (!s.op && s.code && /^\d{4,8}$/.test(s.code)) {
       setBusy(true)
+
       try {
         const result = await tryUnlock(s.code)
 
@@ -120,15 +125,26 @@ export default function Calc() {
           navigate('/notes', { replace: true })
           return
         }
+
+        // Incorrect PIN: clear the entered code.
+        setS(START)
+      } catch (error) {
+        console.error('Unlock failed:', error)
+        setS(START)
       } finally {
         setBusy(false)
       }
+
+      return
     }
 
     setS((p) => {
-      if (!p.op || p.display === 'Error') return { ...p, fresh: true, code: '' }
+      if (!p.op || p.display === 'Error') {
+        return { ...p, fresh: true, code: '' }
+      }
 
       const r = OPS[p.op](p.stored, parseFloat(p.display))
+
       return {
         display: format(r),
         stored: null,
@@ -143,14 +159,14 @@ export default function Calc() {
     if (/^\d$/.test(k)) return digit(k)
     if (k === '.') return dot()
     if (k === 'AC') return setS(START)
-    if (k === '\u00B1') return sign()
+    if (k === '±') return sign()
     if (k === '%') return percent()
     if (k === '=') return equals()
     return operator(k)
   }
 
   const keyStyle = (k) => {
-    if (['AC', '\u00B1', '%'].includes(k)) return 'bg-gray-300 text-black'
+    if (['AC', '±', '%'].includes(k)) return 'bg-gray-300 text-black'
     if (k in OPS) return 'bg-calc-op text-white'
     return 'bg-calc-key text-white'
   }
@@ -186,4 +202,3 @@ export default function Calc() {
     </main>
   )
 }
-

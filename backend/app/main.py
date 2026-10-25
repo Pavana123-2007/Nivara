@@ -18,7 +18,12 @@ app = FastAPI(title="Nivara API", version="0.1.0")
 origins = [
     o.strip()
     for o in os.getenv(
-        "ALLOWED_ORIGINS", "http://localhost:5173"
+        "ALLOWED_ORIGINS",
+        "http://localhost:5173,"
+        "https://localhost:5173,"
+        "https://localhost:5174,"
+        "https://192.168.0.146:5173,"
+        "https://192.168.0.146:5174",
     ).split(",")
     if o.strip()
 ]

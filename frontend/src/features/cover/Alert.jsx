@@ -1,8 +1,8 @@
-
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { sendAlert } from '../../api.js'
 import { loadSecret, saveSecret } from './vault.js'
+import { useI18n } from '../../i18n.jsx'
 
 const styles = {
   page: {
@@ -73,6 +73,7 @@ function getLocation() {
 }
 
 export default function Alert() {
+  const { t } = useI18n()
   const navigate = useNavigate()
   const [contact, setContact] = useState(null)
   const [editing, setEditing] = useState(true)
@@ -201,12 +202,13 @@ export default function Alert() {
           fontSize: 16,
           cursor: 'pointer',
           padding: '8px 0',
+          minHeight: 44,
         }}
       >
-        ← Back
+        {t('common.back')}
       </button>
 
-      <h1 style={{ fontSize: 30, margin: '20px 0 8px' }}>Ask for help</h1>
+      <h1 style={{ fontSize: 30, margin: '20px 0 8px' }}>{t('tool.alert')}</h1>
       <p style={{ fontSize: 14, lineHeight: 1.6 }}>
         Choose one trusted person who can receive your Telegram alert.
       </p>
@@ -236,7 +238,7 @@ export default function Alert() {
               opacity: status?.kind === 'sending' ? 0.6 : 1,
             }}
           >
-            {status?.kind === 'sending' ? 'Sending…' : 'Send emergency alert'}
+            {status?.kind === 'sending' ? 'Sending…' : t('alert.button')}
           </button>
 
           <label
@@ -246,6 +248,7 @@ export default function Alert() {
               gap: 10,
               marginTop: 18,
               fontSize: 14,
+              minHeight: 44,
             }}
           >
             <input

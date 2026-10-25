@@ -1,5 +1,11 @@
 
-import { decryptJSON, deriveKey, encryptJSON, randomBytes, sha256Hex } from './crypto.js'
+import {
+  decryptJSON,
+  deriveKey,
+  encryptJSON,
+  randomBytes,
+  sha256Hex,
+} from './crypto.js'
 import { getDB } from './db.js'
 import { getSessionKey, setSessionKey } from './session.js'
 
@@ -7,9 +13,8 @@ export const DEFAULT_CODE = '1947'
 export const DEFAULT_DECOY = '2580'
 const CHECK = 'nivara-ok'
 
-export const isValidCode = (c) => /^\d{4,8}$/.test(c)
+export const isValidCode = (code) => /^\d{4,8}$/.test(code)
 
-// First run: set up the vault with the default code
 async function ensureSetup() {
   const db = await getDB()
 
@@ -25,96 +30,125 @@ async function ensureSetup() {
   return db
 }
 
-// Returns 'nivara', 'decoy' or null
 export async function tryUnlock(code) {
-  const db = await ensureSetup()
+  if (!isValidCode(code)) return null
 
-  if ((await sha256Hex(code)) === (await db.get('meta', 'decoy'))) {
+  const db = await ensureSetup()
+  const decoyHash = await db.get('meta', 'decoy')
+
+  if ((await sha256Hex(code)) === decoyHash) {
     return 'decoy'
   }
 
-  const key = await deriveKey(code, await db.get('meta', 'salt'))
+  const salt = await db.get('meta', 'salt')
+  const check = await db.get('meta', 'check')
+  const key = await deriveKey(code, salt)
 
   try {
-    if ((await decryptJSON(key, await db.get('meta', 'check'))) === CHECK) {
+    if ((await decryptJSON(key, check)) === CHECK) {
       setSessionKey(key)
       return 'nivara'
     }
   } catch {
-    // Wrong code: decryption fails
+    // Incorrect PIN.
   }
 
   return null
 }
 
-// Re-lock everything with a new code
 export async function changeCode(newCode) {
-  const oldKey = getSessionKey()
-  const db = await ensureSetup()
-
-  if (!oldKey) {
-    throw new Error('Unlock Nivara before changing the code.')
+  if (!isValidCode(newCode)) {
+    throw new Error('PIN must contain 4 to 8 digits.')
   }
 
-  if ((await sha256Hex(newCode)) === (await db.get('meta', 'decoy'))) {
-    throw new Error('Your new Nivara code must be different from your decoy PIN.')
+  const oldKey = getSessionKey()
+
+  if (!oldKey) {
+    throw new Error('Unlock Nivara before changing the PIN.')
+  }
+
+  const db = await ensureSetup()
+  const decoyHash = await db.get('meta', 'decoy')
+
+  if ((await sha256Hex(newCode)) === decoyHash) {
+    throw new Error('Your secret PIN must differ from your decoy PIN.')
   }
 
   const newSalt = randomBytes(16)
   const newKey = await deriveKey(newCode, newSalt)
 
-  const items = []
-  for (const rec of await db.getAll('items')) {
-    items.push({
-      id: rec.id,
-      rec: await encryptJSON(newKey, await decryptJSON(oldKey, rec)),
+  // Re-encrypt vault items before opening the database transaction.
+  const encryptedItems = []
+
+  for (const record of await db.getAll('items')) {
+    const plain = await decryptJSON(oldKey, record)
+    const encrypted = await encryptJSON(newKey, plain)
+
+    encryptedItems.push({
+      id: record.id,
+      ...encrypted,
     })
   }
 
-  const secrets = []
-  for (const [k, v] of await db.getAll('meta')) {
-    if (String(k).startsWith('secret:')) {
-      secrets.push([
-        k,
-        await encryptJSON(newKey, await decryptJSON(oldKey, v)),
+  // Read metadata keys correctly; getAll() returns values, not key/value pairs.
+  const encryptedSecrets = []
+
+  for (const key of await db.getAllKeys('meta')) {
+    if (String(key).startsWith('secret:')) {
+      const value = await db.get('meta', key)
+      const plain = await decryptJSON(oldKey, value)
+
+      encryptedSecrets.push([
+        key,
+        await encryptJSON(newKey, plain),
       ])
     }
   }
 
-  const check = await encryptJSON(newKey, CHECK)
+  const newCheck = await encryptJSON(newKey, CHECK)
 
+  // Commit the encrypted data and new PIN verification together.
   const tx = db.transaction(['items', 'meta'], 'readwrite')
   const itemStore = tx.objectStore('items')
   const metaStore = tx.objectStore('meta')
 
-  for (const item of items) {
-    await itemStore.put({ id: item.id, ...item.rec })
+  for (const item of encryptedItems) {
+    itemStore.put(item)
   }
 
-  for (const [k, v] of secrets) {
-    await metaStore.put(v, k)
+  for (const [key, value] of encryptedSecrets) {
+    metaStore.put(value, key)
   }
 
-  await metaStore.put(newSalt, 'salt')
-  await metaStore.put(check, 'check')
+  metaStore.put(newSalt, 'salt')
+  metaStore.put(newCheck, 'check')
+
   await tx.done
 
+  // Switch the session key only after the database commit succeeds.
   setSessionKey(newKey)
 }
 
 export async function setDecoyPin(pin) {
-  const db = await ensureSetup()
-
-  let same = false
-  try {
-    const key = await deriveKey(pin, await db.get('meta', 'salt'))
-    same = (await decryptJSON(key, await db.get('meta', 'check'))) === CHECK
-  } catch {
-    same = false
+  if (!isValidCode(pin)) {
+    throw new Error('Decoy PIN must contain 4 to 8 digits.')
   }
 
-  if (same) {
-    throw new Error('Your decoy PIN must be different from your code.')
+  const db = await ensureSetup()
+  const salt = await db.get('meta', 'salt')
+  const check = await db.get('meta', 'check')
+  const key = await deriveKey(pin, salt)
+
+  let matchesSecret = false
+
+  try {
+    matchesSecret = (await decryptJSON(key, check)) === CHECK
+  } catch {
+    // This PIN does not match the secret PIN.
+  }
+
+  if (matchesSecret) {
+    throw new Error('Your decoy PIN must differ from your secret PIN.')
   }
 
   await db.put('meta', await sha256Hex(pin), 'decoy')

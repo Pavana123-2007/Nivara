@@ -1,0 +1,72 @@
+import { useCallback, useEffect } from 'react'
+import { Outlet } from 'react-router-dom'
+import { useShake } from './useShake.js'
+import { vanish } from './session.js'
+
+const IDLE_TIMEOUT = 2 * 60 * 1000
+
+export default function ShakeGuard() {
+  const hideNivara = useCallback(() => {
+    vanish()
+  }, [])
+
+  useShake(hideNivara)
+
+  useEffect(() => {
+    let timer
+
+    function resetIdleTimer() {
+      window.clearTimeout(timer)
+      timer = window.setTimeout(() => {
+        vanish()
+      }, IDLE_TIMEOUT)
+    }
+
+    const activityEvents = [
+      'pointerdown',
+      'pointermove',
+      'keydown',
+      'touchstart',
+      'scroll',
+    ]
+
+    activityEvents.forEach((event) =>
+      window.addEventListener(event, resetIdleTimer, { passive: true }),
+    )
+
+    resetIdleTimer()
+
+    function handleVisibilityChange() {
+      if (document.visibilityState === 'hidden') {
+        sessionStorage.setItem('nivara-hidden-at', String(Date.now()))
+      } else {
+        const hiddenAt = Number(
+          sessionStorage.getItem('nivara-hidden-at') || 0,
+        )
+        sessionStorage.removeItem('nivara-hidden-at')
+
+        if (hiddenAt && Date.now() - hiddenAt > 30_000) {
+          vanish()
+          return
+        }
+
+        resetIdleTimer()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+
+    return () => {
+      window.clearTimeout(timer)
+      activityEvents.forEach((event) =>
+        window.removeEventListener(event, resetIdleTimer),
+      )
+      document.removeEventListener(
+        'visibilitychange',
+        handleVisibilityChange,
+      )
+    }
+  }, [])
+
+  return <Outlet />
+}
