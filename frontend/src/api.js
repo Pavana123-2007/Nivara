@@ -1,5 +1,5 @@
 
-const BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+const BASE = (import.meta.env.VITE_API_URL || 'http://localhost:8000').trim().replace(/\/+$/, '') // a stray space, newline or trailing / gives 404s
 
 async function handle(res) {
   const data = await res.json().catch(() => null)

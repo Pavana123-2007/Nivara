@@ -1,7 +1,10 @@
+import io
+import threading
 from dataclasses import dataclass, field
 
 import cv2
 import numpy as np
+from PIL import Image
 from skimage.metrics import structural_similarity
 
 from app.common import NivaraError, to_data_url
@@ -14,6 +17,10 @@ MIN_MATCHES = 15       # alignment needs at least this many matching points
 MIN_VALID = 0.30       # alignment must cover at least 30% of the original
 MIN_COLOUR_DIFF = 12   # also require a visible colour change (ignores JPEG noise on flat walls)
 
+# The free server has 512 MB: a 12 MP phone photo used ~360 MB, a 48 MP one or two at once crashed it.
+READ_SIDE = 2048                  # photos are read at most this big (still 2x the work size)
+HEAVY_JOB = threading.Lock()      # one image job at a time; a double tap waits instead of crashing
+
 @dataclass
 class CompareResult:
     verdict: str
@@ -23,11 +30,28 @@ class CompareResult:
     aligned: bool = True
 
 
-def decode_image(data: bytes) -> np.ndarray:
-    img = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
+def longest_side(data: bytes) -> int:
+    """Reads only the file header, so it is cheap even for huge photos. 0 if unknown."""
+    try:
+        with Image.open(io.BytesIO(data)) as im:
+            return max(im.size)
+    except Exception:
+        return 0
+
+
+def decode_image(data: bytes, max_side: int | None = None) -> np.ndarray:
+    flag = cv2.IMREAD_COLOR
+    if max_side:
+        side = longest_side(data)
+        # JPEGs can be decoded straight at 1/2, 1/4 or 1/8 size, never building the full picture
+        for reduced, n in ((cv2.IMREAD_REDUCED_COLOR_8, 8), (cv2.IMREAD_REDUCED_COLOR_4, 4), (cv2.IMREAD_REDUCED_COLOR_2, 2)):
+            if side // n >= max_side:
+                flag = reduced
+                break
+    img = cv2.imdecode(np.frombuffer(data, np.uint8), flag)
     if img is None:
         raise NivaraError(400, "bad_image", "Could not read the image")
-    return img
+    return _shrink(img, max_side) if max_side else img
 
 
 def _shrink(img: np.ndarray, max_side: int = MAX_SIDE) -> np.ndarray:

@@ -25,8 +25,6 @@ def _embed(img, recipient_id: str):
 
 @router.post("/api/safeshare/mark", response_model=MarkResponse)
 async def mark(image: UploadFile = File(...), recipients: str = Form(...)):
-    from app.imaging import decode_image
-
     data = await read_image(image)
     try:
         ids = json.loads(recipients)
@@ -35,15 +33,18 @@ async def mark(image: UploadFile = File(...), recipients: str = Form(...)):
     if not isinstance(ids, list) or not 0 < len(ids) <= 10 or not all(isinstance(i, str) and ID_RE.match(i) for i in ids):
         raise NivaraError(400, "bad_request", "recipients must be a JSON list of up to 10 four-character ids")
 
-    img = decode_image(data)
-    if min(img.shape[:2]) < 256:
-        raise NivaraError(400, "too_small", "The photo must be at least 256 x 256 pixels")
-
-    copies = []
-    for rid in ids:
-        data_url = await run_in_threadpool(_marked_copy, img, rid)
-        copies.append(MarkedCopy(recipient_id=rid, image=data_url))
+    copies = await run_in_threadpool(_mark_job, data, ids)
     return MarkResponse(copies=copies)
+
+
+def _mark_job(data: bytes, ids: list[str]) -> list[MarkedCopy]:
+    from app.imaging import HEAVY_JOB, READ_SIDE, decode_image
+
+    with HEAVY_JOB:
+        img = decode_image(data, READ_SIDE)  # copies are at most 2048 px; WhatsApp sends ~1600 px anyway
+        if min(img.shape[:2]) < 256:
+            raise NivaraError(400, "too_small", "The photo must be at least 256 x 256 pixels")
+        return [MarkedCopy(recipient_id=rid, image=_marked_copy(img, rid)) for rid in ids]
 
 
 def _marked_copy(img, rid: str) -> str:
@@ -62,9 +63,15 @@ def _marked_copy(img, rid: str) -> str:
 
 @router.post("/api/safeshare/scan", response_model=ScanResponse)
 async def scan(image: UploadFile = File(...)):
-    from app.imaging import decode_image
+    data = await read_image(image)
+    recipient_id, confidence = await run_in_threadpool(_scan_job, data)
+    return ScanResponse(found=recipient_id is not None, recipient_id=recipient_id, confidence=confidence)
+
+
+def _scan_job(data: bytes):
+    from app.imaging import HEAVY_JOB, READ_SIDE, decode_image
     from app.watermark_read import read_recipient
 
-    data = await read_image(image)
-    recipient_id, confidence = read_recipient(decode_image(data))
-    return ScanResponse(found=recipient_id is not None, recipient_id=recipient_id, confidence=confidence)
+    with HEAVY_JOB:
+        # marked copies are never bigger than READ_SIDE, so this never shrinks one (shrinking would erase the mark)
+        return read_recipient(decode_image(data, READ_SIDE))
